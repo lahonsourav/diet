@@ -167,7 +167,7 @@
   function renderMealReminders() {
     const card = document.getElementById("meal-reminders-card");
     card.innerHTML = "";
-    card.appendChild(el("h3", { text: "🔔 Meal Reminders" }));
+    card.appendChild(el("h3", { text: "Meal Reminders" }));
     card.appendChild(buildReminderToggle("mealRemindersEnabled", "Notify me at each meal time", renderMealReminders));
   }
 
@@ -175,7 +175,7 @@
   function renderStats() {
     const card = document.getElementById("stats-card");
     card.innerHTML = "";
-    card.appendChild(el("h3", { text: "📋 Your Stats" }));
+    card.appendChild(el("h3", { text: "Your Stats" }));
     const grid = el("div", { class: "stats-grid" });
     const s = plan.stats;
 
@@ -213,7 +213,7 @@
   function renderNutrition() {
     const card = document.getElementById("nutrition-card");
     card.innerHTML = "";
-    card.appendChild(el("h3", { text: "📊 Daily Nutrition" }));
+    card.appendChild(el("h3", { text: "Daily Nutrition" }));
     const grid = el("div", { class: "nutrition-grid" });
     const n = plan.nutrition;
     const fields = [
@@ -239,7 +239,7 @@
     const card = document.getElementById("rules-card");
     card.innerHTML = "";
     const headRow = el("div", { class: "section-heading-row", style: "margin:0 0 10px" }, [
-      el("h3", { text: "💡 Golden Rules" }),
+      el("h3", { text: "Golden Rules" }),
       editMode ? el("button", { class: "add-btn", text: "+ Add", onclick: () => {
         plan.goldenRules.push("");
         scheduleSave();
