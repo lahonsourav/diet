@@ -1,4 +1,4 @@
-const CACHE_NAME = "bulk-plan-cache-v5";
+const CACHE_NAME = "bulk-plan-cache-v6";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -25,24 +25,25 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Cache-first for the app shell, falling back to the network (and updating
-// the cache in the background) so the app works offline once installed.
+// Network-first for the app shell: whenever the device is online, always
+// fetch the latest files (and refresh the cache with them) so an update
+// deployed to the server shows up on the very next launch, rather than
+// sitting in the cache until some later background revalidation happens
+// to win a race. The cache is only a fallback for when the network fails
+// (offline), not a stand-in for a live network unless one is unavailable.
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
-        .then((response) => {
-          if (response && response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || network;
-    })
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
 
