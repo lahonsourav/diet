@@ -175,7 +175,6 @@
           renderRules();
         } }));
       } else {
-        li.appendChild(el("span", { class: "bullet", text: "•" }));
         li.appendChild(el("span", { class: "list-row__text", text: rule }));
       }
       list.appendChild(li);

@@ -18,7 +18,15 @@
 
 <header class="app-header">
   <div class="app-header__title">
-    <span class="app-header__emoji" aria-hidden="true">🏋️</span>
+    <span class="app-header__logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="1" y="9" width="4" height="6" rx="1"/>
+        <rect x="19" y="9" width="4" height="6" rx="1"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+        <line x1="8" y1="7" x2="8" y2="17"/>
+        <line x1="16" y1="7" x2="16" y2="17"/>
+      </svg>
+    </span>
     <div>
       <h1>Rapid Bulk Plan</h1>
       <p class="app-header__subtitle">Diet + Workout</p>
@@ -78,16 +86,44 @@
 
 <nav class="tab-bar" aria-label="Sections">
   <button class="tab-bar__btn active" data-tab="overview">
-    <span aria-hidden="true">📊</span><span>Overview</span>
+    <span class="tab-bar__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="20" x2="4" y2="12"/>
+        <line x1="12" y1="20" x2="12" y2="6"/>
+        <line x1="20" y1="20" x2="20" y2="14"/>
+      </svg>
+    </span>
+    <span>Overview</span>
   </button>
   <button class="tab-bar__btn" data-tab="diet">
-    <span aria-hidden="true">🍽️</span><span>Diet</span>
+    <span class="tab-bar__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <circle cx="12" cy="12" r="3.5"/>
+      </svg>
+    </span>
+    <span>Diet</span>
   </button>
   <button class="tab-bar__btn" data-tab="workout">
-    <span aria-hidden="true">💪</span><span>Workout</span>
+    <span class="tab-bar__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="1" y="9" width="4" height="6" rx="1"/>
+        <rect x="19" y="9" width="4" height="6" rx="1"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+        <line x1="8" y1="7" x2="8" y2="17"/>
+        <line x1="16" y1="7" x2="16" y2="17"/>
+      </svg>
+    </span>
+    <span>Workout</span>
   </button>
   <button class="tab-bar__btn" data-tab="progress">
-    <span aria-hidden="true">📈</span><span>Progress</span>
+    <span class="tab-bar__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3,17 9,11 13,15 21,6"/>
+        <polyline points="15,6 21,6 21,12"/>
+      </svg>
+    </span>
+    <span>Progress</span>
   </button>
 </nav>
 
