@@ -57,8 +57,6 @@
   // is open (foreground or backgrounded), using the Notification API. A
   // fully-closed app can't be woken up without a push server, so there's
   // no true "closed app" alarm here — the UI is upfront about that.
-  const MON_FIRST_TO_JSDAY = [1, 2, 3, 4, 5, 6, 0]; // plan.schedule[0]=Mon ... [6]=Sun
-
   let reminderTimers = [];
 
   function clearReminders() {
@@ -122,24 +120,6 @@
         scheduleAt(nextOccurrence(t.h, t.min, null), fire);
       });
     }
-
-    if (plan.settings.workoutRemindersEnabled) {
-      const best = plan.workoutTiming[0];
-      const t = best && parseTimeString(best.when);
-      const workoutDays = plan.schedule
-        .map((v, i) => (v !== "Rest" ? { day: MON_FIRST_TO_JSDAY[i], key: v } : null))
-        .filter(Boolean);
-      if (t && workoutDays.length) {
-        const days = workoutDays.map((w) => w.day);
-        const fire = () => {
-          const match = workoutDays.find((w) => w.day === new Date().getDay());
-          const dayInfo = match ? plan.workoutDays[match.key] : null;
-          notify("💪 Workout time", dayInfo ? `${dayInfo.label} — ${dayInfo.name}` : "Time for your workout!", "workout-reminder");
-          scheduleAt(nextOccurrence(t.h, t.min, days), fire);
-        };
-        scheduleAt(nextOccurrence(t.h, t.min, days), fire);
-      }
-    }
   }
 
   function buildReminderToggle(settingKey, labelText, rerender) {
@@ -189,13 +169,6 @@
     card.innerHTML = "";
     card.appendChild(el("h3", { text: "🔔 Meal Reminders" }));
     card.appendChild(buildReminderToggle("mealRemindersEnabled", "Notify me at each meal time", renderMealReminders));
-  }
-
-  function renderWorkoutReminders() {
-    const card = document.getElementById("workout-reminders-card");
-    card.innerHTML = "";
-    card.appendChild(el("h3", { text: "🔔 Workout Reminders" }));
-    card.appendChild(buildReminderToggle("workoutRemindersEnabled", "Notify me on training days", renderWorkoutReminders));
   }
 
   // ---------------- Stats ----------------
@@ -259,44 +232,6 @@
       ]));
     }
     card.appendChild(grid);
-  }
-
-  // ---------------- Timing ----------------
-  function renderTiming() {
-    const card = document.getElementById("timing-card");
-    card.innerHTML = "";
-    const headRow = el("div", { class: "section-heading-row", style: "margin:0 0 10px" }, [
-      el("h3", { text: "⏰ Best Time to Workout" }),
-      editMode ? el("button", { class: "add-btn", text: "+ Add", onclick: () => {
-        plan.workoutTiming.push({ label: "Good", when: "", why: "" });
-        scheduleSave();
-        renderTiming();
-      } }) : null,
-    ]);
-    card.appendChild(headRow);
-
-    plan.workoutTiming.forEach((t, i) => {
-      const row = el("div", { class: "timing-row" });
-      if (editMode) {
-        row.appendChild(el("div", { class: "timing-row__body" }, [
-          textInput(t.label, (v) => { t.label = v; scheduleSave(); }, { placeholder: "Label e.g. Best" }),
-          textInput(t.when, (v) => { t.when = v; scheduleSave(); }, { placeholder: "When" }),
-          textInput(t.why, (v) => { t.why = v; scheduleSave(); }, { placeholder: "Why" }),
-        ]));
-        row.appendChild(el("button", { class: "remove-btn", text: "×", title: "Remove", onclick: () => {
-          plan.workoutTiming.splice(i, 1);
-          scheduleSave();
-          renderTiming();
-        } }));
-      } else {
-        row.appendChild(el("span", { class: `timing-row__badge ${i === 0 ? "" : "secondary"}`, text: t.label }));
-        row.appendChild(el("div", { class: "timing-row__body" }, [
-          el("div", { class: "timing-row__when", text: t.when }),
-          el("div", { class: "timing-row__why", text: t.why }),
-        ]));
-      }
-      card.appendChild(row);
-    });
   }
 
   // ---------------- Golden Rules ----------------
@@ -404,127 +339,6 @@
     renderMeals();
   }
 
-  // ---------------- Schedule ----------------
-  const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-  function renderSchedule() {
-    const card = document.getElementById("schedule-card");
-    card.innerHTML = "";
-    card.appendChild(el("h3", { text: "🗓️ Weekly Schedule" }));
-    const grid = el("div", { class: "schedule-grid" });
-
-    const dayKeys = Object.keys(plan.workoutDays);
-
-    plan.schedule.forEach((val, i) => {
-      const cell = el("div", { class: "schedule-day" });
-      cell.appendChild(el("div", { class: "schedule-day__name", text: DAY_NAMES[i] }));
-      if (editMode) {
-        const select = el("select");
-        const options = [["Rest", "Rest"], ...dayKeys.map((k) => [k, plan.workoutDays[k].label])];
-        for (const [optVal, optLabel] of options) {
-          select.appendChild(el("option", { value: optVal, text: optLabel, selected: optVal === val ? "" : undefined }));
-        }
-        select.value = val;
-        select.addEventListener("change", () => {
-          plan.schedule[i] = select.value;
-          scheduleSave();
-        });
-        cell.appendChild(select);
-      } else {
-        const isRest = val === "Rest";
-        cell.appendChild(el("div", { class: "schedule-day__value", text: isRest ? "😴" : "💪" }));
-        cell.appendChild(el("div", { class: "schedule-day__name", text: isRest ? "Rest" : val }));
-      }
-      grid.appendChild(cell);
-    });
-    card.appendChild(grid);
-
-    const noteWrap = el("div", { class: "schedule-note" });
-    if (editMode) {
-      noteWrap.appendChild(textInput(plan.scheduleNote, (v) => { plan.scheduleNote = v; scheduleSave(); }));
-    } else {
-      noteWrap.textContent = plan.scheduleNote;
-    }
-    card.appendChild(noteWrap);
-  }
-
-  // ---------------- Workout Days ----------------
-  function renderWorkoutDays() {
-    const container = document.getElementById("workout-days");
-    container.innerHTML = "";
-
-    for (const key of Object.keys(plan.workoutDays)) {
-      const day = plan.workoutDays[key];
-      const card = el("div", { class: "card workout-day-card" });
-
-      const heading = el("h3");
-      heading.appendChild(el("span", { class: "workout-day-badge", text: key }));
-      if (editMode) {
-        heading.appendChild(textInput(day.name, (v) => { day.name = v; scheduleSave(); }, { class: "day-name-input" }));
-      } else {
-        heading.appendChild(el("span", { text: `${day.label} — ${day.name}` }));
-      }
-      card.appendChild(heading);
-
-      const table = el("table", { class: "exercise-table" });
-      const thead = el("thead", {}, el("tr", {}, [
-        el("th", { text: "Exercise" }),
-        el("th", { text: "Sets" }),
-        el("th", { text: "Reps" }),
-        el("th", { text: "Rest" }),
-        editMode ? el("th", { text: "" }) : null,
-      ]));
-      table.appendChild(thead);
-
-      const tbody = el("tbody");
-      day.exercises.forEach((ex, i) => {
-        const tr = el("tr");
-        if (editMode) {
-          tr.appendChild(el("td", { class: "ex-name" }, textInput(ex.name, (v) => { ex.name = v; scheduleSave(); })));
-          tr.appendChild(el("td", { class: "ex-sets" }, numberInput(ex.sets, (v) => { ex.sets = v; scheduleSave(); })));
-          tr.appendChild(el("td", { class: "ex-reps" }, textInput(String(ex.reps), (v) => { ex.reps = v; scheduleSave(); })));
-          tr.appendChild(el("td", { class: "ex-rest" }, textInput(ex.rest, (v) => { ex.rest = v; scheduleSave(); })));
-          tr.appendChild(el("td", { class: "ex-remove" }, el("button", { class: "remove-btn", text: "×", onclick: () => {
-            day.exercises.splice(i, 1);
-            scheduleSave();
-            renderWorkoutDays();
-          } })));
-        } else {
-          tr.appendChild(el("td", { class: "ex-name", text: ex.name }));
-          tr.appendChild(el("td", { text: String(ex.sets) }));
-          tr.appendChild(el("td", { text: String(ex.reps) }));
-          tr.appendChild(el("td", { text: ex.rest }));
-        }
-        tbody.appendChild(tr);
-      });
-      table.appendChild(tbody);
-      card.appendChild(table);
-
-      if (editMode) {
-        card.appendChild(el("button", { class: "add-btn", text: "+ Add exercise", onclick: () => {
-          day.exercises.push({ name: "New exercise", sets: 3, reps: "10-12", rest: "60 sec" });
-          scheduleSave();
-          renderWorkoutDays();
-        } }));
-      }
-
-      container.appendChild(card);
-    }
-  }
-
-  // ---------------- Progression ----------------
-  function renderProgression() {
-    const card = document.getElementById("progression-card");
-    card.innerHTML = "";
-    card.appendChild(el("h3", { text: "🔄 Progression Rule" }));
-    if (editMode) {
-      const textarea = el("textarea", { text: plan.progressionRule });
-      textarea.addEventListener("input", () => { plan.progressionRule = textarea.value; scheduleSave(); });
-      card.appendChild(textarea);
-    } else {
-      card.appendChild(el("p", { text: plan.progressionRule }));
-    }
-  }
 
   // ---------------- Weight Log ----------------
   function todayISO() {
@@ -654,14 +468,9 @@
   function renderAll() {
     renderStats();
     renderNutrition();
-    renderTiming();
     renderRules();
     renderMeals();
     renderMealReminders();
-    renderSchedule();
-    renderWorkoutDays();
-    renderWorkoutReminders();
-    renderProgression();
     renderWeightLog();
   }
 

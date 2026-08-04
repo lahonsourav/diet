@@ -1,4 +1,4 @@
-const CACHE_NAME = "bulk-plan-cache-v3";
+const CACHE_NAME = "bulk-plan-cache-v4";
 const APP_SHELL = [
   "./",
   "./index.html",

@@ -1,7 +1,7 @@
 {
   "name": "Rapid Bulk Plan",
   "short_name": "Bulk Plan",
-  "description": "Editable diet + workout plan for rapid, healthy weight gain",
+  "description": "Editable diet plan for rapid, healthy weight gain",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
