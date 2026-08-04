@@ -591,13 +591,41 @@
 
   // ---------------- Service worker ----------------
   function initServiceWorker() {
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("service-worker.js").catch((err) => {
+    if (!("serviceWorker" in navigator)) return;
+
+    // If a controller is already present, this is a returning visit under
+    // an existing worker — a later controllerchange means a real update
+    // landed and swapped it out, so the stale already-loaded page should
+    // reload. If there's no controller yet, the first controllerchange is
+    // just this worker claiming the page for the first time, not an update.
+    let hadController = !!navigator.serviceWorker.controller;
+    let reloading = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!hadController) {
+        hadController = true;
+        return;
+      }
+      if (reloading) return;
+      reloading = true;
+      window.location.reload();
+    });
+
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("service-worker.js")
+        .then((reg) => {
+          // iOS Safari in particular rarely re-checks an installed PWA's
+          // service worker on its own, so ask explicitly whenever the app
+          // is opened or comes back into view instead of waiting on that.
+          reg.update();
+          document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") reg.update();
+          });
+        })
+        .catch((err) => {
           console.warn("Service worker registration failed", err);
         });
-      });
-    }
+    });
   }
 
   function init() {
