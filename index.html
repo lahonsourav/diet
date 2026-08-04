@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Rapid Bulk Plan</title>
+<meta name="description" content="Editable diet + workout plan for rapid, healthy weight gain" />
+<meta name="theme-color" content="#16a34a" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Bulk Plan" />
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-header__title">
+    <span class="app-header__emoji" aria-hidden="true">🏋️</span>
+    <div>
+      <h1>Rapid Bulk Plan</h1>
+      <p class="app-header__subtitle">Diet + Workout</p>
+    </div>
+  </div>
+  <div class="app-header__actions">
+    <label class="edit-toggle">
+      <input type="checkbox" id="edit-mode-toggle" />
+      <span class="edit-toggle__track"><span class="edit-toggle__thumb"></span></span>
+      <span class="edit-toggle__label">Edit</span>
+    </label>
+    <button id="menu-btn" class="icon-btn" aria-haspopup="true" aria-expanded="false" title="More options">⋮</button>
+    <div id="menu-popover" class="menu-popover hidden" role="menu">
+      <button id="export-btn" role="menuitem">⬇ Export plan (JSON)</button>
+      <button id="import-btn" role="menuitem">⬆ Import plan (JSON)</button>
+      <input type="file" id="import-file" accept="application/json" class="hidden" />
+      <button id="reset-btn" role="menuitem" class="danger">↺ Reset to default</button>
+      <button id="install-btn" role="menuitem" class="hidden">📲 Install app</button>
+    </div>
+  </div>
+</header>
+
+<div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+<main class="app-main">
+
+  <section id="tab-overview" class="tab-panel" data-tab-panel="overview">
+    <div id="stats-card" class="card"></div>
+    <div id="nutrition-card" class="card"></div>
+    <div id="timing-card" class="card"></div>
+    <div id="rules-card" class="card"></div>
+  </section>
+
+  <section id="tab-diet" class="tab-panel hidden" data-tab-panel="diet">
+    <div class="section-heading-row">
+      <h2>🍽️ Full Diet Plan</h2>
+      <button id="add-meal-btn" class="add-btn hidden">+ Add meal</button>
+    </div>
+    <div id="meals-list"></div>
+  </section>
+
+  <section id="tab-workout" class="tab-panel hidden" data-tab-panel="workout">
+    <h2>💪 Workout Plan</h2>
+    <div id="schedule-card" class="card"></div>
+    <div id="workout-days"></div>
+    <div id="progression-card" class="card"></div>
+  </section>
+
+  <section id="tab-progress" class="tab-panel hidden" data-tab-panel="progress">
+    <h2>📅 Rapid Gain Timeline</h2>
+    <div id="timeline-card" class="card"></div>
+    <h2>⚖️ Weight Log</h2>
+    <div id="weightlog-card" class="card"></div>
+  </section>
+
+</main>
+
+<nav class="tab-bar" aria-label="Sections">
+  <button class="tab-bar__btn active" data-tab="overview">
+    <span aria-hidden="true">📊</span><span>Overview</span>
+  </button>
+  <button class="tab-bar__btn" data-tab="diet">
+    <span aria-hidden="true">🍽️</span><span>Diet</span>
+  </button>
+  <button class="tab-bar__btn" data-tab="workout">
+    <span aria-hidden="true">💪</span><span>Workout</span>
+  </button>
+  <button class="tab-bar__btn" data-tab="progress">
+    <span aria-hidden="true">📈</span><span>Progress</span>
+  </button>
+</nav>
+
+<template id="tpl-meal-item">
+  <li class="list-row">
+    <span class="list-row__text"></span>
+    <button class="remove-btn hidden" title="Remove">×</button>
+  </li>
+</template>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
