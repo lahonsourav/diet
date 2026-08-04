@@ -1,4 +1,4 @@
-const CACHE_NAME = "bulk-plan-cache-v1";
+const CACHE_NAME = "bulk-plan-cache-v4";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -42,6 +42,17 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => cached);
       return cached || network;
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientsArr) => {
+      const existing = clientsArr.find((c) => "focus" in c);
+      if (existing) return existing.focus();
+      return self.clients.openWindow("./");
     })
   );
 });

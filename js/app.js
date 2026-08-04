@@ -7,7 +7,10 @@
 
   function scheduleSave() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => savePlan(plan), 250);
+    saveTimer = setTimeout(() => {
+      savePlan(plan);
+      scheduleAllReminders();
+    }, 250);
   }
 
   function el(tag, opts = {}, children = []) {
@@ -47,6 +50,125 @@
       toast.style.opacity = "0";
       setTimeout(() => toast.classList.add("hidden"), 200);
     }, 1800);
+  }
+
+  // ---------------- Reminders ----------------
+  // Best-effort local reminders: they fire via a timer while this app/tab
+  // is open (foreground or backgrounded), using the Notification API. A
+  // fully-closed app can't be woken up without a push server, so there's
+  // no true "closed app" alarm here — the UI is upfront about that.
+  let reminderTimers = [];
+
+  function clearReminders() {
+    reminderTimers.forEach(clearTimeout);
+    reminderTimers = [];
+  }
+
+  function parseTimeString(str) {
+    const m = String(str || "").match(/(\d{1,2}):(\d{2})\s*([AaPp][Mm])/);
+    if (!m) return null;
+    let h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    const isPM = /p/i.test(m[3]);
+    if (isPM && h !== 12) h += 12;
+    if (!isPM && h === 12) h = 0;
+    return { h, min };
+  }
+
+  function nextOccurrence(h, min, daysAllowed) {
+    const now = new Date();
+    for (let addDays = 0; addDays < 8; addDays++) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + addDays, h, min, 0, 0);
+      if (d <= now) continue;
+      if (!daysAllowed || daysAllowed.includes(d.getDay())) return d;
+    }
+    return null;
+  }
+
+  function scheduleAt(date, fn) {
+    if (!date) return;
+    const delay = date.getTime() - Date.now();
+    if (delay <= 0 || delay > 2147483647) return; // guard past times / setTimeout overflow
+    reminderTimers.push(setTimeout(fn, delay));
+  }
+
+  function notify(title, body, tag) {
+    const options = { body, tag, icon: "icons/icon-192.png", badge: "icons/icon-192.png" };
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready
+        .then((reg) => reg.showNotification(title, options))
+        .catch(() => {
+          try { new Notification(title, options); } catch (e) { /* unsupported */ }
+        });
+    } else if ("Notification" in window && Notification.permission === "granted") {
+      try { new Notification(title, options); } catch (e) { /* unsupported */ }
+    }
+  }
+
+  function scheduleAllReminders() {
+    clearReminders();
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+    if (plan.settings.mealRemindersEnabled) {
+      plan.meals.forEach((meal) => {
+        const t = parseTimeString(meal.time);
+        if (!t) return;
+        const fire = () => {
+          notify(`🍽️ ${meal.title} time`, meal.items[0] ? meal.items[0] : "Time to eat!", `meal-${meal.id}`);
+          scheduleAt(nextOccurrence(t.h, t.min, null), fire);
+        };
+        scheduleAt(nextOccurrence(t.h, t.min, null), fire);
+      });
+    }
+  }
+
+  function buildReminderToggle(settingKey, labelText, rerender) {
+    const wrap = el("div", { class: "reminder-row" });
+    const supported = "Notification" in window;
+    const permission = supported ? Notification.permission : "unsupported";
+
+    const label = el("label", { class: "switch reminder-switch" });
+    const input = el("input", { type: "checkbox" });
+    input.checked = !!plan.settings[settingKey];
+    input.disabled = !supported || permission === "denied";
+    label.appendChild(input);
+    label.appendChild(el("span", { class: "switch__track" }, el("span", { class: "switch__thumb" })));
+    label.appendChild(el("span", { class: "switch__label", text: labelText }));
+    wrap.appendChild(label);
+
+    const status = el("p", { class: "reminder-status" });
+    if (!supported) {
+      status.textContent = "Notifications aren't supported in this browser.";
+    } else if (permission === "denied") {
+      status.classList.add("warn");
+      status.textContent = "Notifications are blocked for this site — enable them in your browser's site settings to use reminders.";
+    } else {
+      status.textContent = "Reminders fire while this app stays open in the background. For best results, add it to your Home Screen and leave it running.";
+    }
+    wrap.appendChild(status);
+
+    input.addEventListener("change", async () => {
+      if (input.checked && supported && Notification.permission === "default") {
+        const result = await Notification.requestPermission();
+        if (result !== "granted") {
+          input.checked = false;
+          rerender();
+          return;
+        }
+      }
+      plan.settings[settingKey] = input.checked;
+      scheduleSave();
+      rerender();
+    });
+
+    return wrap;
+  }
+
+  function renderMealReminders() {
+    const card = document.getElementById("meal-reminders-card");
+    card.innerHTML = "";
+    card.appendChild(el("h3", { text: "🔔 Meal Reminders" }));
+    card.appendChild(buildReminderToggle("mealRemindersEnabled", "Notify me at each meal time", renderMealReminders));
   }
 
   // ---------------- Stats ----------------
@@ -112,44 +234,6 @@
     card.appendChild(grid);
   }
 
-  // ---------------- Timing ----------------
-  function renderTiming() {
-    const card = document.getElementById("timing-card");
-    card.innerHTML = "";
-    const headRow = el("div", { class: "section-heading-row", style: "margin:0 0 10px" }, [
-      el("h3", { text: "⏰ Best Time to Workout" }),
-      editMode ? el("button", { class: "add-btn", text: "+ Add", onclick: () => {
-        plan.workoutTiming.push({ label: "Good", when: "", why: "" });
-        scheduleSave();
-        renderTiming();
-      } }) : null,
-    ]);
-    card.appendChild(headRow);
-
-    plan.workoutTiming.forEach((t, i) => {
-      const row = el("div", { class: "timing-row" });
-      if (editMode) {
-        row.appendChild(el("div", { class: "timing-row__body" }, [
-          textInput(t.label, (v) => { t.label = v; scheduleSave(); }, { placeholder: "Label e.g. Best" }),
-          textInput(t.when, (v) => { t.when = v; scheduleSave(); }, { placeholder: "When" }),
-          textInput(t.why, (v) => { t.why = v; scheduleSave(); }, { placeholder: "Why" }),
-        ]));
-        row.appendChild(el("button", { class: "remove-btn", text: "×", title: "Remove", onclick: () => {
-          plan.workoutTiming.splice(i, 1);
-          scheduleSave();
-          renderTiming();
-        } }));
-      } else {
-        row.appendChild(el("span", { class: `timing-row__badge ${i === 0 ? "" : "secondary"}`, text: t.label }));
-        row.appendChild(el("div", { class: "timing-row__body" }, [
-          el("div", { class: "timing-row__when", text: t.when }),
-          el("div", { class: "timing-row__why", text: t.why }),
-        ]));
-      }
-      card.appendChild(row);
-    });
-  }
-
   // ---------------- Golden Rules ----------------
   function renderRules() {
     const card = document.getElementById("rules-card");
@@ -175,7 +259,6 @@
           renderRules();
         } }));
       } else {
-        li.appendChild(el("span", { class: "bullet", text: "•" }));
         li.appendChild(el("span", { class: "list-row__text", text: rule }));
       }
       list.appendChild(li);
@@ -256,170 +339,6 @@
     renderMeals();
   }
 
-  // ---------------- Schedule ----------------
-  const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-  function renderSchedule() {
-    const card = document.getElementById("schedule-card");
-    card.innerHTML = "";
-    card.appendChild(el("h3", { text: "🗓️ Weekly Schedule" }));
-    const grid = el("div", { class: "schedule-grid" });
-
-    const dayKeys = Object.keys(plan.workoutDays);
-
-    plan.schedule.forEach((val, i) => {
-      const cell = el("div", { class: "schedule-day" });
-      cell.appendChild(el("div", { class: "schedule-day__name", text: DAY_NAMES[i] }));
-      if (editMode) {
-        const select = el("select");
-        const options = [["Rest", "Rest"], ...dayKeys.map((k) => [k, plan.workoutDays[k].label])];
-        for (const [optVal, optLabel] of options) {
-          select.appendChild(el("option", { value: optVal, text: optLabel, selected: optVal === val ? "" : undefined }));
-        }
-        select.value = val;
-        select.addEventListener("change", () => {
-          plan.schedule[i] = select.value;
-          scheduleSave();
-        });
-        cell.appendChild(select);
-      } else {
-        const isRest = val === "Rest";
-        cell.appendChild(el("div", { class: "schedule-day__value", text: isRest ? "😴" : "💪" }));
-        cell.appendChild(el("div", { class: "schedule-day__name", text: isRest ? "Rest" : val }));
-      }
-      grid.appendChild(cell);
-    });
-    card.appendChild(grid);
-
-    const noteWrap = el("div", { class: "schedule-note" });
-    if (editMode) {
-      noteWrap.appendChild(textInput(plan.scheduleNote, (v) => { plan.scheduleNote = v; scheduleSave(); }));
-    } else {
-      noteWrap.textContent = plan.scheduleNote;
-    }
-    card.appendChild(noteWrap);
-  }
-
-  // ---------------- Workout Days ----------------
-  function renderWorkoutDays() {
-    const container = document.getElementById("workout-days");
-    container.innerHTML = "";
-
-    for (const key of Object.keys(plan.workoutDays)) {
-      const day = plan.workoutDays[key];
-      const card = el("div", { class: "card workout-day-card" });
-
-      const heading = el("h3");
-      heading.appendChild(el("span", { class: "workout-day-badge", text: key }));
-      if (editMode) {
-        heading.appendChild(textInput(day.name, (v) => { day.name = v; scheduleSave(); }, { class: "day-name-input" }));
-      } else {
-        heading.appendChild(el("span", { text: `${day.label} — ${day.name}` }));
-      }
-      card.appendChild(heading);
-
-      const table = el("table", { class: "exercise-table" });
-      const thead = el("thead", {}, el("tr", {}, [
-        el("th", { text: "Exercise" }),
-        el("th", { text: "Sets" }),
-        el("th", { text: "Reps" }),
-        el("th", { text: "Rest" }),
-        editMode ? el("th", { text: "" }) : null,
-      ]));
-      table.appendChild(thead);
-
-      const tbody = el("tbody");
-      day.exercises.forEach((ex, i) => {
-        const tr = el("tr");
-        if (editMode) {
-          tr.appendChild(el("td", { class: "ex-name" }, textInput(ex.name, (v) => { ex.name = v; scheduleSave(); })));
-          tr.appendChild(el("td", { class: "ex-sets" }, numberInput(ex.sets, (v) => { ex.sets = v; scheduleSave(); })));
-          tr.appendChild(el("td", { class: "ex-reps" }, textInput(String(ex.reps), (v) => { ex.reps = v; scheduleSave(); })));
-          tr.appendChild(el("td", { class: "ex-rest" }, textInput(ex.rest, (v) => { ex.rest = v; scheduleSave(); })));
-          tr.appendChild(el("td", { class: "ex-remove" }, el("button", { class: "remove-btn", text: "×", onclick: () => {
-            day.exercises.splice(i, 1);
-            scheduleSave();
-            renderWorkoutDays();
-          } })));
-        } else {
-          tr.appendChild(el("td", { class: "ex-name", text: ex.name }));
-          tr.appendChild(el("td", { text: String(ex.sets) }));
-          tr.appendChild(el("td", { text: String(ex.reps) }));
-          tr.appendChild(el("td", { text: ex.rest }));
-        }
-        tbody.appendChild(tr);
-      });
-      table.appendChild(tbody);
-      card.appendChild(table);
-
-      if (editMode) {
-        card.appendChild(el("button", { class: "add-btn", text: "+ Add exercise", onclick: () => {
-          day.exercises.push({ name: "New exercise", sets: 3, reps: "10-12", rest: "60 sec" });
-          scheduleSave();
-          renderWorkoutDays();
-        } }));
-      }
-
-      container.appendChild(card);
-    }
-  }
-
-  // ---------------- Progression ----------------
-  function renderProgression() {
-    const card = document.getElementById("progression-card");
-    card.innerHTML = "";
-    card.appendChild(el("h3", { text: "🔄 Progression Rule" }));
-    if (editMode) {
-      const textarea = el("textarea", { text: plan.progressionRule });
-      textarea.addEventListener("input", () => { plan.progressionRule = textarea.value; scheduleSave(); });
-      card.appendChild(textarea);
-    } else {
-      card.appendChild(el("p", { text: plan.progressionRule }));
-    }
-  }
-
-  // ---------------- Timeline ----------------
-  function renderTimeline() {
-    const card = document.getElementById("timeline-card");
-    card.innerHTML = "";
-    const headRow = el("div", { class: "section-heading-row", style: "margin:0 0 6px" }, [
-      el("h3", { text: "Milestones" }),
-      editMode ? el("button", { class: "add-btn", text: "+ Add", onclick: () => {
-        plan.timeline.push({ month: "", weight: "", milestone: "" });
-        scheduleSave();
-        renderTimeline();
-      } }) : null,
-    ]);
-    card.appendChild(headRow);
-
-    const list = el("ul", { class: "timeline-list" });
-    plan.timeline.forEach((t, i) => {
-      const li = el("li", { class: "timeline-row" });
-      if (editMode) {
-        li.appendChild(el("div", { class: "timeline-row__body" }, [
-          textInput(t.month, (v) => { t.month = v; scheduleSave(); }, { placeholder: "Month" }),
-          textInput(t.weight, (v) => { t.weight = v; scheduleSave(); }, { placeholder: "Weight" }),
-          textInput(t.milestone, (v) => { t.milestone = v; scheduleSave(); }, { placeholder: "Milestone" }),
-        ]));
-        li.appendChild(el("button", { class: "remove-btn", text: "×", onclick: () => {
-          plan.timeline.splice(i, 1);
-          scheduleSave();
-          renderTimeline();
-        } }));
-      } else {
-        li.appendChild(el("div", { class: "timeline-row__dot" }));
-        li.appendChild(el("div", { class: "timeline-row__body" }, [
-          el("div", {}, [
-            el("span", { class: "timeline-row__month", text: t.month + " " }),
-            el("span", { class: "timeline-row__weight", text: t.weight }),
-          ]),
-          el("div", { class: "timeline-row__milestone", text: t.milestone }),
-        ]));
-      }
-      list.appendChild(li);
-    });
-    card.appendChild(list);
-  }
 
   // ---------------- Weight Log ----------------
   function todayISO() {
@@ -427,9 +346,27 @@
     return d.toISOString().slice(0, 10);
   }
 
+  function syncCurrentWeightFromLog() {
+    if (plan.weightLog.length === 0) return;
+    const latest = plan.weightLog[plan.weightLog.length - 1];
+    plan.stats.currentWeight = latest.weight;
+  }
+
   function renderWeightLog() {
     const card = document.getElementById("weightlog-card");
     card.innerHTML = "";
+
+    const summary = el("div", { class: "stats-grid weightlog-summary" }, [
+      el("div", { class: "stat-box" }, [
+        el("div", { class: "stat-box__label", text: "Current Weight" }),
+        el("div", { class: "stat-box__value", text: `${plan.stats.currentWeight} kg` }),
+      ]),
+      el("div", { class: "stat-box" }, [
+        el("div", { class: "stat-box__label", text: "Target Weight" }),
+        el("div", { class: "stat-box__value", text: `${plan.stats.targetWeightLow}–${plan.stats.targetWeightHigh} kg` }),
+      ]),
+    ]);
+    card.appendChild(summary);
 
     const form = el("div", { class: "weightlog-form" });
     const dateInput = el("input", { type: "date", value: todayISO() });
@@ -440,9 +377,11 @@
       if (!w || w <= 0) { showToast("Enter a valid weight"); return; }
       plan.weightLog.push({ date: dateInput.value || todayISO(), weight: w });
       plan.weightLog.sort((a, b) => a.date.localeCompare(b.date));
+      syncCurrentWeightFromLog();
       scheduleSave();
       weightInput.value = "";
       renderWeightLog();
+      renderStats();
       showToast("Weigh-in logged");
     });
     form.appendChild(dateInput);
@@ -465,8 +404,10 @@
       li.appendChild(el("span", { class: "wl-weight", text: `${entry.weight} kg` }));
       li.appendChild(el("button", { class: "remove-btn", text: "×", onclick: () => {
         plan.weightLog.splice(realIndex, 1);
+        syncCurrentWeightFromLog();
         scheduleSave();
         renderWeightLog();
+        renderStats();
       } }));
       list.appendChild(li);
     });
@@ -527,13 +468,9 @@
   function renderAll() {
     renderStats();
     renderNutrition();
-    renderTiming();
     renderRules();
     renderMeals();
-    renderSchedule();
-    renderWorkoutDays();
-    renderProgression();
-    renderTimeline();
+    renderMealReminders();
     renderWeightLog();
   }
 
@@ -671,6 +608,10 @@
     initInstallPrompt();
     initServiceWorker();
     renderAll();
+    scheduleAllReminders();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") scheduleAllReminders();
+    });
   }
 
   document.addEventListener("DOMContentLoaded", init);
