@@ -494,28 +494,20 @@ h2 {
   background: transparent;
   color: var(--text-faint);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  font-size: 0.66rem;
+  font-size: 0.86rem;
   font-weight: 600;
   cursor: pointer;
   padding: 6px 0;
 }
-.tab-bar__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 26px;
-  border-radius: 10px;
-  transition: background 0.15s ease;
-}
-.tab-bar__icon svg { width: 21px; height: 21px; }
 .tab-bar__btn.active { color: var(--accent); }
-.tab-bar__btn.active .tab-bar__icon { background: rgba(22, 163, 74, 0.15); }
-.tab-bar__btn.active .tab-bar__icon { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.tab-bar__btn.active span {
+  background: rgba(22, 163, 74, 0.15);
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  padding: 6px 16px;
+  border-radius: 999px;
+}
 
 /* Toast */
 .toast {
