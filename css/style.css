@@ -566,46 +566,19 @@ table.exercise-table td.ex-remove { width: 30px; text-align: right; }
 }
 .progression-card p { font-size: 0.88rem; line-height: 1.5; color: var(--text-muted); margin: 0; }
 
-/* Timeline */
-.timeline-list { list-style: none; margin: 0; padding: 0; }
-.timeline-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--card-border);
-}
-.timeline-row:last-child { border-bottom: none; }
-.timeline-row__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--accent);
-  flex-shrink: 0;
-}
-.timeline-row__body { flex: 1; min-width: 0; }
-.timeline-row__month { font-weight: 700; font-size: 0.85rem; }
-.timeline-row__weight { color: var(--accent); font-weight: 700; font-size: 0.85rem; }
-.timeline-row__milestone { color: var(--text-muted); font-size: 0.8rem; }
-.timeline-row input {
-  width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--card-border);
-  border-radius: 6px;
-  padding: 4px 6px;
-  color: var(--text);
-  font-size: 0.8rem;
-  margin-bottom: 3px;
-}
-
 /* Weight log */
+.weightlog-summary {
+  margin-bottom: 14px;
+}
 .weightlog-form {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
 }
 .weightlog-form input {
-  flex: 1;
+  flex: 1 1 120px;
+  min-width: 0;
   background: var(--bg);
   border: 1px solid var(--card-border);
   border-radius: 8px;
@@ -614,6 +587,7 @@ table.exercise-table td.ex-remove { width: 30px; text-align: right; }
   font-size: 0.9rem;
 }
 .weightlog-form button {
+  flex: 0 0 auto;
   background: var(--accent);
   color: #fff;
   border: none;

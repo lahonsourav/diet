@@ -21,7 +21,7 @@ const DEFAULT_PLAN = {
   meals: [
     {
       id: "m1",
-      time: "7:30 AM",
+      time: "10:00 AM",
       title: "Breakfast",
       calories: 650,
       items: [
@@ -125,13 +125,6 @@ const DEFAULT_PLAN = {
       why: "Before breakfast shake",
     },
   ],
-  timeline: [
-    { month: "Start", weight: "58 kg", milestone: "Begin diet + workout" },
-    { month: "Month 1", weight: "59.5-60 kg", milestone: "Body adapting" },
-    { month: "Month 2", weight: "61-61.5 kg", milestone: "Strength increasing" },
-    { month: "Month 3", weight: "62.5-63 kg", milestone: "Visible muscle growth" },
-    { month: "Month 6", weight: "65-66 kg", milestone: "Target achieved" },
-  ],
   goldenRules: [
     "Eat within 30 mins after workout — this is the most important window for muscle gain",
     "Sleep 7-8 hours — 70% of muscle is built during sleep, not workout",
@@ -139,7 +132,7 @@ const DEFAULT_PLAN = {
     "Don't skip meals — set phone alarms for every meal time",
     "Stay consistent — 3 months of discipline beats 3 weeks of perfection",
   ],
-  // User-logged weigh-ins, kept separate from the static timeline above.
+  // User-logged weigh-ins — this is the source of truth for progress.
   weightLog: [],
   settings: {
     mealRemindersEnabled: false,

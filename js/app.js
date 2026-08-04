@@ -526,58 +526,33 @@
     }
   }
 
-  // ---------------- Timeline ----------------
-  function renderTimeline() {
-    const card = document.getElementById("timeline-card");
-    card.innerHTML = "";
-    const headRow = el("div", { class: "section-heading-row", style: "margin:0 0 6px" }, [
-      el("h3", { text: "Milestones" }),
-      editMode ? el("button", { class: "add-btn", text: "+ Add", onclick: () => {
-        plan.timeline.push({ month: "", weight: "", milestone: "" });
-        scheduleSave();
-        renderTimeline();
-      } }) : null,
-    ]);
-    card.appendChild(headRow);
-
-    const list = el("ul", { class: "timeline-list" });
-    plan.timeline.forEach((t, i) => {
-      const li = el("li", { class: "timeline-row" });
-      if (editMode) {
-        li.appendChild(el("div", { class: "timeline-row__body" }, [
-          textInput(t.month, (v) => { t.month = v; scheduleSave(); }, { placeholder: "Month" }),
-          textInput(t.weight, (v) => { t.weight = v; scheduleSave(); }, { placeholder: "Weight" }),
-          textInput(t.milestone, (v) => { t.milestone = v; scheduleSave(); }, { placeholder: "Milestone" }),
-        ]));
-        li.appendChild(el("button", { class: "remove-btn", text: "×", onclick: () => {
-          plan.timeline.splice(i, 1);
-          scheduleSave();
-          renderTimeline();
-        } }));
-      } else {
-        li.appendChild(el("div", { class: "timeline-row__dot" }));
-        li.appendChild(el("div", { class: "timeline-row__body" }, [
-          el("div", {}, [
-            el("span", { class: "timeline-row__month", text: t.month + " " }),
-            el("span", { class: "timeline-row__weight", text: t.weight }),
-          ]),
-          el("div", { class: "timeline-row__milestone", text: t.milestone }),
-        ]));
-      }
-      list.appendChild(li);
-    });
-    card.appendChild(list);
-  }
-
   // ---------------- Weight Log ----------------
   function todayISO() {
     const d = new Date();
     return d.toISOString().slice(0, 10);
   }
 
+  function syncCurrentWeightFromLog() {
+    if (plan.weightLog.length === 0) return;
+    const latest = plan.weightLog[plan.weightLog.length - 1];
+    plan.stats.currentWeight = latest.weight;
+  }
+
   function renderWeightLog() {
     const card = document.getElementById("weightlog-card");
     card.innerHTML = "";
+
+    const summary = el("div", { class: "stats-grid weightlog-summary" }, [
+      el("div", { class: "stat-box" }, [
+        el("div", { class: "stat-box__label", text: "Current Weight" }),
+        el("div", { class: "stat-box__value", text: `${plan.stats.currentWeight} kg` }),
+      ]),
+      el("div", { class: "stat-box" }, [
+        el("div", { class: "stat-box__label", text: "Target Weight" }),
+        el("div", { class: "stat-box__value", text: `${plan.stats.targetWeightLow}–${plan.stats.targetWeightHigh} kg` }),
+      ]),
+    ]);
+    card.appendChild(summary);
 
     const form = el("div", { class: "weightlog-form" });
     const dateInput = el("input", { type: "date", value: todayISO() });
@@ -588,9 +563,11 @@
       if (!w || w <= 0) { showToast("Enter a valid weight"); return; }
       plan.weightLog.push({ date: dateInput.value || todayISO(), weight: w });
       plan.weightLog.sort((a, b) => a.date.localeCompare(b.date));
+      syncCurrentWeightFromLog();
       scheduleSave();
       weightInput.value = "";
       renderWeightLog();
+      renderStats();
       showToast("Weigh-in logged");
     });
     form.appendChild(dateInput);
@@ -613,8 +590,10 @@
       li.appendChild(el("span", { class: "wl-weight", text: `${entry.weight} kg` }));
       li.appendChild(el("button", { class: "remove-btn", text: "×", onclick: () => {
         plan.weightLog.splice(realIndex, 1);
+        syncCurrentWeightFromLog();
         scheduleSave();
         renderWeightLog();
+        renderStats();
       } }));
       list.appendChild(li);
     });
@@ -683,7 +662,6 @@
     renderWorkoutDays();
     renderWorkoutReminders();
     renderProgression();
-    renderTimeline();
     renderWeightLog();
   }
 
