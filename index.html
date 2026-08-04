@@ -33,10 +33,10 @@
     </div>
   </div>
   <div class="app-header__actions">
-    <label class="edit-toggle">
+    <label class="switch edit-toggle">
       <input type="checkbox" id="edit-mode-toggle" />
-      <span class="edit-toggle__track"><span class="edit-toggle__thumb"></span></span>
-      <span class="edit-toggle__label">Edit</span>
+      <span class="switch__track"><span class="switch__thumb"></span></span>
+      <span class="switch__label">Edit</span>
     </label>
     <button id="menu-btn" class="icon-btn" aria-haspopup="true" aria-expanded="false" title="More options">⋮</button>
     <div id="menu-popover" class="menu-popover hidden" role="menu">
@@ -53,14 +53,9 @@
 
 <main class="app-main">
 
-  <section id="tab-overview" class="tab-panel" data-tab-panel="overview">
-    <div id="stats-card" class="card"></div>
+  <section id="tab-diet" class="tab-panel" data-tab-panel="diet">
     <div id="nutrition-card" class="card"></div>
-    <div id="timing-card" class="card"></div>
-    <div id="rules-card" class="card"></div>
-  </section>
-
-  <section id="tab-diet" class="tab-panel hidden" data-tab-panel="diet">
+    <div id="meal-reminders-card" class="card"></div>
     <div class="section-heading-row">
       <h2>🍽️ Full Diet Plan</h2>
       <button id="add-meal-btn" class="add-btn hidden">+ Add meal</button>
@@ -71,31 +66,25 @@
   <section id="tab-workout" class="tab-panel hidden" data-tab-panel="workout">
     <h2>💪 Workout Plan</h2>
     <div id="schedule-card" class="card"></div>
+    <div id="timing-card" class="card"></div>
+    <div id="workout-reminders-card" class="card"></div>
     <div id="workout-days"></div>
     <div id="progression-card" class="card"></div>
   </section>
 
   <section id="tab-progress" class="tab-panel hidden" data-tab-panel="progress">
+    <div id="stats-card" class="card"></div>
     <h2>📅 Rapid Gain Timeline</h2>
     <div id="timeline-card" class="card"></div>
     <h2>⚖️ Weight Log</h2>
     <div id="weightlog-card" class="card"></div>
+    <div id="rules-card" class="card"></div>
   </section>
 
 </main>
 
 <nav class="tab-bar" aria-label="Sections">
-  <button class="tab-bar__btn active" data-tab="overview">
-    <span class="tab-bar__icon" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="4" y1="20" x2="4" y2="12"/>
-        <line x1="12" y1="20" x2="12" y2="6"/>
-        <line x1="20" y1="20" x2="20" y2="14"/>
-      </svg>
-    </span>
-    <span>Overview</span>
-  </button>
-  <button class="tab-bar__btn" data-tab="diet">
+  <button class="tab-bar__btn active" data-tab="diet">
     <span class="tab-bar__icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="9"/>

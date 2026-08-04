@@ -7,7 +7,10 @@
 
   function scheduleSave() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => savePlan(plan), 250);
+    saveTimer = setTimeout(() => {
+      savePlan(plan);
+      scheduleAllReminders();
+    }, 250);
   }
 
   function el(tag, opts = {}, children = []) {
@@ -47,6 +50,152 @@
       toast.style.opacity = "0";
       setTimeout(() => toast.classList.add("hidden"), 200);
     }, 1800);
+  }
+
+  // ---------------- Reminders ----------------
+  // Best-effort local reminders: they fire via a timer while this app/tab
+  // is open (foreground or backgrounded), using the Notification API. A
+  // fully-closed app can't be woken up without a push server, so there's
+  // no true "closed app" alarm here — the UI is upfront about that.
+  const MON_FIRST_TO_JSDAY = [1, 2, 3, 4, 5, 6, 0]; // plan.schedule[0]=Mon ... [6]=Sun
+
+  let reminderTimers = [];
+
+  function clearReminders() {
+    reminderTimers.forEach(clearTimeout);
+    reminderTimers = [];
+  }
+
+  function parseTimeString(str) {
+    const m = String(str || "").match(/(\d{1,2}):(\d{2})\s*([AaPp][Mm])/);
+    if (!m) return null;
+    let h = parseInt(m[1], 10);
+    const min = parseInt(m[2], 10);
+    const isPM = /p/i.test(m[3]);
+    if (isPM && h !== 12) h += 12;
+    if (!isPM && h === 12) h = 0;
+    return { h, min };
+  }
+
+  function nextOccurrence(h, min, daysAllowed) {
+    const now = new Date();
+    for (let addDays = 0; addDays < 8; addDays++) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + addDays, h, min, 0, 0);
+      if (d <= now) continue;
+      if (!daysAllowed || daysAllowed.includes(d.getDay())) return d;
+    }
+    return null;
+  }
+
+  function scheduleAt(date, fn) {
+    if (!date) return;
+    const delay = date.getTime() - Date.now();
+    if (delay <= 0 || delay > 2147483647) return; // guard past times / setTimeout overflow
+    reminderTimers.push(setTimeout(fn, delay));
+  }
+
+  function notify(title, body, tag) {
+    const options = { body, tag, icon: "icons/icon-192.png", badge: "icons/icon-192.png" };
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready
+        .then((reg) => reg.showNotification(title, options))
+        .catch(() => {
+          try { new Notification(title, options); } catch (e) { /* unsupported */ }
+        });
+    } else if ("Notification" in window && Notification.permission === "granted") {
+      try { new Notification(title, options); } catch (e) { /* unsupported */ }
+    }
+  }
+
+  function scheduleAllReminders() {
+    clearReminders();
+    if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+    if (plan.settings.mealRemindersEnabled) {
+      plan.meals.forEach((meal) => {
+        const t = parseTimeString(meal.time);
+        if (!t) return;
+        const fire = () => {
+          notify(`🍽️ ${meal.title} time`, meal.items[0] ? meal.items[0] : "Time to eat!", `meal-${meal.id}`);
+          scheduleAt(nextOccurrence(t.h, t.min, null), fire);
+        };
+        scheduleAt(nextOccurrence(t.h, t.min, null), fire);
+      });
+    }
+
+    if (plan.settings.workoutRemindersEnabled) {
+      const best = plan.workoutTiming[0];
+      const t = best && parseTimeString(best.when);
+      const workoutDays = plan.schedule
+        .map((v, i) => (v !== "Rest" ? { day: MON_FIRST_TO_JSDAY[i], key: v } : null))
+        .filter(Boolean);
+      if (t && workoutDays.length) {
+        const days = workoutDays.map((w) => w.day);
+        const fire = () => {
+          const match = workoutDays.find((w) => w.day === new Date().getDay());
+          const dayInfo = match ? plan.workoutDays[match.key] : null;
+          notify("💪 Workout time", dayInfo ? `${dayInfo.label} — ${dayInfo.name}` : "Time for your workout!", "workout-reminder");
+          scheduleAt(nextOccurrence(t.h, t.min, days), fire);
+        };
+        scheduleAt(nextOccurrence(t.h, t.min, days), fire);
+      }
+    }
+  }
+
+  function buildReminderToggle(settingKey, labelText, rerender) {
+    const wrap = el("div", { class: "reminder-row" });
+    const supported = "Notification" in window;
+    const permission = supported ? Notification.permission : "unsupported";
+
+    const label = el("label", { class: "switch reminder-switch" });
+    const input = el("input", { type: "checkbox" });
+    input.checked = !!plan.settings[settingKey];
+    input.disabled = !supported || permission === "denied";
+    label.appendChild(input);
+    label.appendChild(el("span", { class: "switch__track" }, el("span", { class: "switch__thumb" })));
+    label.appendChild(el("span", { class: "switch__label", text: labelText }));
+    wrap.appendChild(label);
+
+    const status = el("p", { class: "reminder-status" });
+    if (!supported) {
+      status.textContent = "Notifications aren't supported in this browser.";
+    } else if (permission === "denied") {
+      status.classList.add("warn");
+      status.textContent = "Notifications are blocked for this site — enable them in your browser's site settings to use reminders.";
+    } else {
+      status.textContent = "Reminders fire while this app stays open in the background. For best results, add it to your Home Screen and leave it running.";
+    }
+    wrap.appendChild(status);
+
+    input.addEventListener("change", async () => {
+      if (input.checked && supported && Notification.permission === "default") {
+        const result = await Notification.requestPermission();
+        if (result !== "granted") {
+          input.checked = false;
+          rerender();
+          return;
+        }
+      }
+      plan.settings[settingKey] = input.checked;
+      scheduleSave();
+      rerender();
+    });
+
+    return wrap;
+  }
+
+  function renderMealReminders() {
+    const card = document.getElementById("meal-reminders-card");
+    card.innerHTML = "";
+    card.appendChild(el("h3", { text: "🔔 Meal Reminders" }));
+    card.appendChild(buildReminderToggle("mealRemindersEnabled", "Notify me at each meal time", renderMealReminders));
+  }
+
+  function renderWorkoutReminders() {
+    const card = document.getElementById("workout-reminders-card");
+    card.innerHTML = "";
+    card.appendChild(el("h3", { text: "🔔 Workout Reminders" }));
+    card.appendChild(buildReminderToggle("workoutRemindersEnabled", "Notify me on training days", renderWorkoutReminders));
   }
 
   // ---------------- Stats ----------------
@@ -529,8 +678,10 @@
     renderTiming();
     renderRules();
     renderMeals();
+    renderMealReminders();
     renderSchedule();
     renderWorkoutDays();
+    renderWorkoutReminders();
     renderProgression();
     renderTimeline();
     renderWeightLog();
@@ -670,6 +821,10 @@
     initInstallPrompt();
     initServiceWorker();
     renderAll();
+    scheduleAllReminders();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") scheduleAllReminders();
+    });
   }
 
   document.addEventListener("DOMContentLoaded", init);

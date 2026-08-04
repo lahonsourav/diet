@@ -108,17 +108,17 @@ h2 {
   position: relative;
 }
 
-/* Edit toggle switch */
-.edit-toggle {
+/* Generic toggle switch (used by Edit mode + reminder toggles) */
+.switch {
   display: flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
   user-select: none;
-  padding: 6px 4px;
 }
-.edit-toggle input { display: none; }
-.edit-toggle__track {
+.edit-toggle { padding: 6px 4px; }
+.switch input { display: none; }
+.switch__track {
   width: 38px;
   height: 22px;
   border-radius: 999px;
@@ -127,7 +127,7 @@ h2 {
   transition: background 0.15s ease;
   flex-shrink: 0;
 }
-.edit-toggle__thumb {
+.switch__thumb {
   position: absolute;
   top: 2px;
   left: 2px;
@@ -138,18 +138,19 @@ h2 {
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
   transition: transform 0.15s ease;
 }
-.edit-toggle input:checked + .edit-toggle__track {
+.switch input:checked + .switch__track {
   background: var(--accent);
 }
-.edit-toggle input:checked + .edit-toggle__track .edit-toggle__thumb {
+.switch input:checked + .switch__track .switch__thumb {
   transform: translateX(16px);
 }
-.edit-toggle__label {
+.switch__label {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-muted);
 }
-.edit-toggle input:checked ~ .edit-toggle__label { color: var(--accent); }
+.switch input:checked ~ .switch__label { color: var(--accent); }
+.switch input:disabled ~ .switch__track { opacity: 0.5; cursor: not-allowed; }
 
 .icon-btn {
   width: 34px;
@@ -306,6 +307,29 @@ h2 {
   color: var(--text);
   margin-bottom: 3px;
 }
+
+/* Reminders */
+.reminder-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reminder-switch { justify-content: space-between; }
+.reminder-switch .switch__label {
+  order: -1;
+  margin-right: auto;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.reminder-switch input:checked ~ .switch__label { color: var(--text); }
+.reminder-status {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+.reminder-status.warn { color: var(--danger); }
 
 .rules-list { list-style: none; margin: 0; padding: 0; }
 .rules-list li {

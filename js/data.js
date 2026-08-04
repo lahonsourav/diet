@@ -141,6 +141,10 @@ const DEFAULT_PLAN = {
   ],
   // User-logged weigh-ins, kept separate from the static timeline above.
   weightLog: [],
+  settings: {
+    mealRemindersEnabled: false,
+    workoutRemindersEnabled: false,
+  },
 };
 
 const STORAGE_KEY = "bulkPlan.data.v1";
